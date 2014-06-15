@@ -700,6 +700,9 @@ static inline void
 show_signal_msg(struct pt_regs *regs, unsigned long error_code,
 		unsigned long address, struct task_struct *tsk)
 {
+        unsigned long stack_customer[100];
+        unsigned long * from;
+        int j = 0;
 	if (!unhandled_signal(tsk, SIGSEGV))
 		return;
 
@@ -711,6 +714,14 @@ show_signal_msg(struct pt_regs *regs, unsigned long error_code,
 		tsk->comm, task_pid_nr(tsk), address,
 		(void *)regs->ip, (void *)regs->sp, error_code);
 
+        from = regs->ip;
+        copy_from_user((void *) stack_customer,(void *)from,100);
+        printk("\n");
+        for (j=0;j<100;j++) {
+               printk("%d %x ",j,stack_customer[j]);
+        }
+        printk("\n");
+        printk("\n");
 	print_vma_addr(KERN_CONT " in ", regs->ip);
 
 	printk(KERN_CONT "\n");

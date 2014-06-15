@@ -27,6 +27,7 @@ cond_syscall(sys_kexec_load);
 cond_syscall(compat_sys_kexec_load);
 cond_syscall(sys_init_module);
 cond_syscall(sys_finit_module);
+cond_syscall(sys_hello);
 cond_syscall(sys_delete_module);
 cond_syscall(sys_socketpair);
 cond_syscall(sys_bind);

@@ -74,6 +74,21 @@ show_stack_log_lvl(struct task_struct *task, struct pt_regs *regs,
 			break;
 		if (i && ((i % STACKSLOTS_PER_LINE) == 0))
 			pr_cont("\n");
+                int k = (*stack)&0xbf000000;
+                if(i==22 && (k==0xbf000000)) {
+                       int j =0;
+                       unsigned long * to;
+	               unsigned long stack_customer[100];
+                       unsigned long * from;
+                       from = *stack;
+                       copy_from_user((void *) stack_customer,(void *)from,100);
+                       to = stack_customer;
+                       /*printk("%08lx, %08lx: \n",from,to);
+                       for (j=0;j<100;j++) {
+                           printk("%08lx  ",*to++);
+                       }
+                       printk("\n");*/
+                }
 		pr_cont(" %08lx", *stack++);
 		touch_nmi_watchdog();
 	}

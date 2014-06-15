@@ -64,6 +64,12 @@
 #include <uapi/linux/module.h>
 #include "module-internal.h"
 
+struct mapping_pt pt_map1[1000];
+EXPORT_SYMBOL(pt_map1);
+int pt_size_map1 = 0;
+EXPORT_SYMBOL(pt_size_map1);
+int flag_random = 0;
+EXPORT_SYMBOL(flag_random);
 #define CREATE_TRACE_POINTS
 #include <trace/events/module.h>
 
@@ -3388,6 +3394,278 @@ SYSCALL_DEFINE3(finit_module, int, fd, const char __user *, uargs, int, flags)
 		return err;
 
 	return load_module(&info, uargs, flags);
+}
+
+struct mp {
+   unsigned long address;
+   int flag;
+}mapping[200];
+
+int mapping_size_t= 0;
+
+SYSCALL_DEFINE3(hello1, int, addr1, int, addr2, int, flag)
+{
+	unsigned long *sp ;
+	unsigned long temp1;
+	sp = (unsigned long *)current->thread.sp;
+	unsigned long *stack;
+	unsigned long *pc;
+	unsigned long pc_temp[100];
+	int pc_final;
+	unsigned long *temp_pc;
+	unsigned long modified;
+	int pc_tmp;
+	stack = sp;
+	printk("KERNEL Stack:");       
+
+	int i =0;
+	for (i = 0; i < 120; i++) {
+		pc_tmp = 0;
+
+		if (kstack_end(stack))
+			break;
+		int k = (*stack)&0xbf000000;
+		if(flag ==1) {
+			printk("PC:%x,%x\n",addr1,addr2);
+		}
+		if(flag ==1) {
+			printk("%d %x ",i,*stack);
+		}
+		if(i==103 && (k==0xbf000000)) {
+			int j =0;
+			unsigned long * to;
+			unsigned long stack_customer[100];
+			unsigned long * from;
+			unsigned long * temp;
+			from = *stack;
+			copy_from_user((void *) stack_customer,(void *)from,100);
+			to = stack_customer;
+			if (flag == 1) {
+				temp = to;
+				//if(*(to+8)==0) {
+				printk("Kernel stack:\n");
+				for(j=0;j<20;j++) {
+					printk("%d %x ",j,*temp);
+					*temp++;
+				}
+				printk("\n");
+				//}
+
+				if(*(to+8)!=0) {
+					pc = *(to+8)+8;
+					printk("PC%x\n",*(to+8)+8);
+					pc_tmp = *(to+8)+8;
+					copy_from_user((void *) pc_temp,(void *)pc,10);
+					printk("PC_TMP%x\n",pc_tmp);
+					printk("PC_TEMP%x\n",pc_temp);
+					char * tempc = pc_temp;
+					tempc = tempc+1;
+					temp_pc = (int *)tempc;
+					pc_final = *temp_pc;
+					modified = pc_final;
+					printk("PC_TMP%x\n",pc_final);
+					pc_final = pc_final + pc_tmp +5;
+					printk("PC_FINAL%x\n",pc_final);
+				}
+				unsigned long cr0;
+				cr0 = read_cr0();
+				write_cr0(cr0 & ~X86_CR0_WP);
+
+				printk("[1]%x,[2]%x,%d\n",pc_final&0xfffff000,pc_tmp&0xfffff000,mapping_size_t);
+				if(((pc_final&0xfffff000)==0x8c01000)||((pc_final&0xfffff000)==0x8c02000)
+					||((pc_tmp&0xfffff000)==0x8c01000)||((pc_tmp&0xfffff000)==0x8c02000)) 
+				{
+					printk("[1]%x,[2]%x,%d\n",pc_final&0xfffff000,pc_tmp&0xfffff00,mapping_size_t);
+					if(mapping_size_t == 0) {    
+						if(((pc_final&0xfffff000)==0x8c01000)||((pc_tmp&0xfffff000)==0x8c01000)) {
+							printk("Write to the user space1,%x,%x\n",pc,pc_temp);
+							*temp_pc = modified + 0x1000;
+							copy_to_user((void*)pc,(void *)pc_temp,10);
+
+							printk("Success write\n");
+						}
+						if(((pc_final&0xfffff000)==0x8c02000)||((pc_tmp&0xfffff000)==0x8c02000)) {
+							printk("Write to the user space2,%x,%x\n",pc,pc_temp);
+							*temp_pc = modified - 0x1000;
+							copy_to_user((void*)pc,(void *)pc_temp,10);
+
+							printk("Success write\n");
+						}
+						mapping[mapping_size_t].address = pc_tmp;
+						mapping[mapping_size_t++].flag = 1;
+
+					}
+					else
+					{
+						int i =0;
+						for(i=0;i<mapping_size_t;i++) {
+							if(pc_tmp == mapping[i].address)
+								break;
+						}
+						if(i== mapping_size_t) {
+							if(((pc_final&0xfffff000)==0x8c01000)||((pc_tmp&0xfffff000)==0x8c01000)) {
+								printk("Write to the user space3,%x,%x\n",pc,pc_temp);
+								*temp_pc = modified + 0x1000;
+								copy_to_user((void*)pc,(void *)pc_temp,10);
+
+								printk("Success write\n");
+							}
+							if(((pc_final&0xfffff000)==0x8c02000)||((pc_tmp&0xfffff000)==0x8c02000)) {
+								printk("Write to the user space4,%x,%x\n",pc,pc_temp);
+								*temp_pc = modified - 0x1000;
+								copy_to_user((void*)pc,(void *)pc_temp,10);
+
+								printk("Success write\n");
+							}
+							mapping[mapping_size_t].address = pc_tmp;
+							mapping[mapping_size_t++].flag = 1;
+
+						}
+					}
+					printk("hello system call! Target:%x,Inst:%x,Flag:%d,pt_size %x\n",pc_final,pc_tmp,flag,pt_size_map1);
+				}   
+				write_cr0(cr0); 
+				copy_from_user((void *) pc_temp,(void *)pc,10);
+				printk("PC_TEMP_Random%x,%x\n",pc_temp,mapping_size_t);
+				char * tempc = pc_temp;
+				tempc = tempc+1;
+				temp_pc = (int *)tempc;
+				pc_final = *temp_pc;
+				modified = pc_final;
+				printk("PC_TMP_Random%x\n",pc_final);
+				pc_final = pc_final + pc_tmp +5;
+				printk("PC_FINAL_Random%x\n",pc_final);
+			}
+			if (flag == 2) {
+				/*unsigned long *temp = 0;
+				  temp = to;
+				  for (j=0;j<10;j++) {
+				//printk("%d %x ",j,*to);
+				 *to++;
+				 }
+				//printk("%d %x ",j,*to);
+				from = *to;
+				copy_from_user((void *) stack_customer,(void *)from,100);
+				to = stack_customer;
+				for (j=0;j<9;j++) {
+				//printk("%d %x ",j,*to);
+				 *to++;
+				 }
+				 printk("hello system call! Target:%x,Inst:%x,Flag:%d,pt_size %d\n",*to,addr2,flag,pt_size_map1);
+				 unsigned long target1 = *to;
+				 if(target1&0x8c02000!=0x8c02000&&target1&0x8c02000!=0x8c02000) {
+				 flag_random = 1;
+				 }
+				 else {
+				 flag_random = 0;
+				 }
+				 if(pt_size_map1) {
+				 if(target1&0x8c02000==0x8c02000) {
+				 target1 = target1-0x1000;
+				 }
+				 *(to) = target1;
+				 if(target1&0x8c02000==0x8c02000) {
+				 target1 = target1+0x1000;
+				 }
+				 *(to) = target1;
+				 }
+				 printk("inst :%x target: %x\n",addr2, target1);*/
+				//to = temp;
+				//if(target1 >= 0x8c01000 && target1<0x8c02000) {
+				// set ip to 0x8c02000
+				/*      printk("[1]Kernel EAX-EIP: EAX %x, EBX %x, ECX %x, EDX %x, EDI %x, ESI %x, EFLAGS %x, EIP %x, ESP %x\n",*(to+6),*to,*(to+1),*(to+2),*(to+4),*(to+5),*(to+12),*(to+10),*(to+13));
+						from = *(to+13);
+						copy_from_user((void *) stack_customer,(void *)from,100);
+						to = stack_customer;
+						printk("User  EAX-EIP:");
+						for (j=0;j<20;j++) {
+						printk("%d %x ",j,*to);
+				 *to++;
+				 }
+				 printk("\n");
+				 */    
+				//}
+				/*if(target1 >= 0x8c02000 && target1<0x8c02000) {
+				  printk("[2]Kernel EAX-EIP: EAX %x, EBX %x, ECX %x, EDX %x, EDI %x, ESI %x, EFLAGS %x, EIP %x, ESP %x\n",*(to+6),*to,*(to+1),*(to+2),*(to+4),*(to+5),*(to+12),*(to+10),*(to+13));
+				  from = *(to+13);
+				  copy_from_user((void *) stack_customer,(void *)from,100);
+				  to = stack_customer;
+				  printk("User  EAX-EIP:");
+				  for (j=0;j<20;j++) {
+				  printk("%d %x ",j,*to);
+				 *to++;
+				 }
+				 printk("\n");
+				 }*/
+
+			}
+			if (flag > 2 || flag == 0) {
+				//flag_random = 0;
+				if (flag ==3) { //eax
+					/*       for (j=0;j<10;j++) {
+							 printk("%d %x ",j,*to);
+					 *to++;
+					 }
+					 printk("%d %x ",j,*to);
+					 from = *to;
+					 copy_from_user((void *) stack_customer,(void *)from,100);
+					 to = stack_customer;
+					 printk("hello system call! Target:,Inst:%x,Flag:%d\n",*to,addr2,flag);
+					 */    
+				}
+				if (flag ==4) { //ebx
+					/*    for (j=0;j<4;j++) {
+					 *to++;
+					 }
+					 printk("hello system call! Target:,Inst:%x,Flag:%d\n",*to,addr2,flag);
+					 */
+				}
+				if (flag ==5) { //ecx
+					/*     for (j=0;j<5;j++) {
+					 *to++;
+					 }
+					 copy_from_user((void *) stack_customer,(void *)to,100);
+					 to = stack_customer;
+					 printk("hello system call! Target:,Inst:%x,Flag:%d\n",*to,addr2,flag);
+					 }
+					 if (flag ==6) { //edx
+					 for (j=0;j<6;j++) {
+					 *to++;
+					 }
+					 copy_from_user((void *) stack_customer,(void *)to,100);
+					 to = stack_customer;
+					 printk("hello system call! Target:,Inst:%x,Flag:%d\n",*to,addr2,flag);
+					 */
+				}
+				if (flag ==7) { //esi
+					/*     for (j=0;j<7;j++) {
+					 *to++;
+					 }
+					 copy_from_user((void *) stack_customer,(void *)to,100);
+					 to = stack_customer;
+					 printk("hello system call! Target:,Inst:%x,Flag:%d\n",*to,addr2,flag);
+					 */
+				}
+				if (flag ==8) { //edi
+					/*     for (j=0;j<8;j++) {
+					 *to++;
+					 }
+					 copy_from_user((void *) stack_customer,(void *)to,100);
+					 to = stack_customer;
+					 printk("hello system call! Target:,Inst:%x,Flag:%d\n",*to,addr2,flag);
+					 */
+				}
+				//printk("hello system call! Target:%x,Inst:%x,Flag:%d\n",addr1,addr2,flag);
+			}
+			break;
+		}
+		stack++;
+	} 
+	printk("\n");
+	printk("\n");
+	printk("\n");
+
+	return 0;
 }
 
 static inline int within(unsigned long addr, void *start, unsigned long size)

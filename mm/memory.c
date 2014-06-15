@@ -3701,6 +3701,8 @@ static int handle_pte_fault(struct mm_struct *mm,
 					return do_linear_fault(mm, vma, address,
 						pte, pmd, flags, entry);
 			}
+			if(address == 0x8c00000)
+				printk("Do the anonymous page\n");
 			return do_anonymous_page(mm, vma, address,
 						 pte, pmd, flags);
 		}

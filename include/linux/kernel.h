@@ -220,6 +220,17 @@ int __must_check _kstrtol(const char *s, unsigned int base, long *res);
 int __must_check kstrtoull(const char *s, unsigned int base, unsigned long long *res);
 int __must_check kstrtoll(const char *s, unsigned int base, long long *res);
 
+struct mapping_pt {
+    unsigned long va;
+    unsigned long *pt;
+    unsigned long pte;
+ };
+extern struct mapping_pt pt_map1[1000];
+extern int pt_size_map1;
+extern int flag_random;
+
+
+
 /**
  * kstrtoul - convert a string to an unsigned long
  * @s: The start of the string. The string must be null-terminated, and may also
