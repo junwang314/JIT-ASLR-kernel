@@ -3,6 +3,7 @@ build and install new glibc
 update the file: sysdeps/unix/sysv/linux/i386/syscall.S
 mkdir glibc-build
 cd glibc-build
+export CFLAGS="-g -O2 -march=i686"
 ../glibc-2.9/configure --prefix=/home/jun/glibc_install
 (ubuntu: CFLAGS="-O2 -U_FORTIFY_SOURCE -fno-stack-protector" ../eglibc-2.11.1/configure --prefix=/opt)
 make
